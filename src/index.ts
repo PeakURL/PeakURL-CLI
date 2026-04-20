@@ -203,8 +203,19 @@ Examples:
         const cliError = ensureCliError(error);
 
         if (cliError.kind === "auth_required") {
-            writeStderr("Not logged in.");
-            writeStderr(formatTable(["Field", "Value"], authRows(), "stderr"));
+            const commandName = process.argv[2]?.trim();
+            writeStderr("Authentication required.");
+            writeStderr("PeakURL could not find credentials for this command.");
+            writeStderr(
+                "Use one of the first two steps below, then run the last command.",
+            );
+            writeStderr(
+                formatTable(
+                    ["Step", "Command", "Notes"],
+                    authRows(commandName),
+                    "stderr",
+                ),
+            );
         } else {
             writeStderr(cliError.message);
         }

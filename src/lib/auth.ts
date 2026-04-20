@@ -4,6 +4,8 @@ import { CliError } from "./errors.js";
 import { normalizeBaseUrl } from "./url.js";
 
 export const AUTH_REQUIRED_MESSAGE = "PeakURL credentials are not configured.";
+const EXAMPLE_BASE_URL = "https://example.com/api/v1";
+const EXAMPLE_API_KEY = "YOUR_API_KEY";
 
 interface LoginInput {
     baseUrl?: string;
@@ -13,13 +15,25 @@ interface LoginInput {
 /**
  * Returns the human-readable auth setup rows shown when no credentials exist.
  */
-export function authRows(): string[][] {
-    return [
-        ["Reason", AUTH_REQUIRED_MESSAGE],
-        ["Command", "peakurl login"],
-        ["Flags", "--base-url <url> --api-key <key>"],
-        ["Env", "PEAKURL_BASE_URL, PEAKURL_API_KEY"],
+export function authRows(commandName?: string): string[][] {
+    const retryCommand = commandName
+        ? `peakurl ${commandName}`
+        : "peakurl whoami";
+    const rows: string[][] = [
+        [
+            "Save credentials",
+            `peakurl login --base-url ${EXAMPLE_BASE_URL}\n--api-key ${EXAMPLE_API_KEY}`,
+            "Regular use on this machine",
+        ],
+        [
+            "Set environment variables",
+            `PEAKURL_BASE_URL=${EXAMPLE_BASE_URL}\nPEAKURL_API_KEY=${EXAMPLE_API_KEY}`,
+            "CI, scripts, or one-off use",
+        ],
+        ["Then run", retryCommand, "After completing one of the steps above"],
     ];
+
+    return rows;
 }
 
 /**

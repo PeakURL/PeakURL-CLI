@@ -115,10 +115,14 @@ export function formatTable(
               middleJunction: "+",
               bottomJunction: "+",
           };
+    const getLines = (value: string | undefined): string[] =>
+        (value ?? "").split("\n");
     const widths = headers.map((header, index) =>
         Math.max(
             header.length,
-            ...rows.map((row) => (row[index] ?? "").length),
+            ...rows.flatMap((row) =>
+                getLines(row[index]).map((line) => line.length),
+            ),
         ),
     );
 
@@ -131,10 +135,21 @@ export function formatTable(
             .map((width) => border.horizontal.repeat(width + 2))
             .join(join)}${right}`;
 
-    const formatTableRow = (cells: string[]): string =>
-        `${border.vertical}${cells
-            .map((cell, index) => ` ${(cell ?? "").padEnd(widths[index])} `)
-            .join(border.vertical)}${border.vertical}`;
+    const formatTableRow = (cells: string[]): string => {
+        const linesByCell = cells.map(getLines);
+        const rowHeight = Math.max(...linesByCell.map((lines) => lines.length));
+
+        return Array.from(
+            { length: rowHeight },
+            (_value, rowIndex) =>
+                `${border.vertical}${linesByCell
+                    .map(
+                        (lines, cellIndex) =>
+                            ` ${(lines[rowIndex] ?? "").padEnd(widths[cellIndex])} `,
+                    )
+                    .join(border.vertical)}${border.vertical}`,
+        ).join("\n");
+    };
 
     return [
         formatTableBorder(border.topLeft, border.topJunction, border.topRight),

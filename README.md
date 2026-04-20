@@ -1,5 +1,7 @@
 # PeakURL - Command-Line Interface
 
+![PeakURL CLI](https://github.com/PeakURL/PeakURL/blob/main/.github/images/peakurl-cli.jpg?raw=1)
+
 The official command-line interface for PeakURL.
 
 Use `peakurl` to create short links, inspect existing links, and manage your PeakURL account from the terminal.

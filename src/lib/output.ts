@@ -71,6 +71,89 @@ export function writeNoticeBox(
 }
 
 /**
+ * Renders a plain-text table with a boxed header/body layout.
+ *
+ * Unicode borders are used in interactive terminals. Non-TTY output falls back
+ * to ASCII so logs and captured output remain readable everywhere.
+ *
+ * @param headers Header labels shown in the first row.
+ * @param rows Body rows shown below the header separator.
+ * @param target Output stream target.
+ * @returns Table string ready to write as a single block.
+ */
+export function formatTable(
+    headers: string[],
+    rows: string[][],
+    target: "stdout" | "stderr" = "stdout",
+): string {
+    const stream = target === "stdout" ? process.stdout : process.stderr;
+    const useTuiBox = stream.isTTY;
+    const border = useTuiBox
+        ? {
+              topLeft: "┌",
+              topRight: "┐",
+              bottomLeft: "└",
+              bottomRight: "┘",
+              horizontal: "─",
+              vertical: "│",
+              separatorLeft: "├",
+              separatorRight: "┤",
+              topJunction: "┬",
+              middleJunction: "┼",
+              bottomJunction: "┴",
+          }
+        : {
+              topLeft: "+",
+              topRight: "+",
+              bottomLeft: "+",
+              bottomRight: "+",
+              horizontal: "-",
+              vertical: "|",
+              separatorLeft: "+",
+              separatorRight: "+",
+              topJunction: "+",
+              middleJunction: "+",
+              bottomJunction: "+",
+          };
+    const widths = headers.map((header, index) =>
+        Math.max(
+            header.length,
+            ...rows.map((row) => (row[index] ?? "").length),
+        ),
+    );
+
+    const formatTableBorder = (
+        left: string,
+        join: string,
+        right: string,
+    ): string =>
+        `${left}${widths
+            .map((width) => border.horizontal.repeat(width + 2))
+            .join(join)}${right}`;
+
+    const formatTableRow = (cells: string[]): string =>
+        `${border.vertical}${cells
+            .map((cell, index) => ` ${(cell ?? "").padEnd(widths[index])} `)
+            .join(border.vertical)}${border.vertical}`;
+
+    return [
+        formatTableBorder(border.topLeft, border.topJunction, border.topRight),
+        formatTableRow(headers),
+        formatTableBorder(
+            border.separatorLeft,
+            border.middleJunction,
+            border.separatorRight,
+        ),
+        ...rows.map(formatTableRow),
+        formatTableBorder(
+            border.bottomLeft,
+            border.bottomJunction,
+            border.bottomRight,
+        ),
+    ].join("\n");
+}
+
+/**
  * Serializes a value as pretty JSON and writes it to stdout.
  */
 export function writeJson(value: unknown): void {

@@ -1,5 +1,15 @@
 import { CliError } from "./errors.js";
 
+function validateHttpUrl(parsed: URL, label: string): void {
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        throw new CliError(`${label} must use http or https.`);
+    }
+
+    if (parsed.username || parsed.password) {
+        throw new CliError(`${label} must not include embedded credentials.`);
+    }
+}
+
 /**
  * Validates and normalizes a PeakURL installation base URL.
  *
@@ -27,9 +37,7 @@ export function normalizeBaseUrl(value: string): string {
         throw new CliError(`Invalid base URL: ${value}`);
     }
 
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-        throw new CliError("PeakURL base URLs must use http or https.");
-    }
+    validateHttpUrl(parsed, "PeakURL base URL");
 
     parsed.hash = "";
     parsed.search = "";
@@ -83,8 +91,14 @@ export function normalizeDestinationUrl(value: string): string {
     }
 
     try {
-        return new URL(input).toString();
-    } catch {
+        const parsed = new URL(input);
+        validateHttpUrl(parsed, "Destination URL");
+        return parsed.toString();
+    } catch (error) {
+        if (error instanceof CliError) {
+            throw error;
+        }
+
         throw new CliError(`Invalid destination URL: ${value}`);
     }
 }

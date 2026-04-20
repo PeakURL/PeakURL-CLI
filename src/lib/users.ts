@@ -1,6 +1,6 @@
 import type { PeakUrlUser } from "../types.js";
 
-function readString(value: unknown): string | undefined {
+function stringValue(value: unknown): string | undefined {
     return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
@@ -8,13 +8,13 @@ function readString(value: unknown): string | undefined {
  * Returns the best human-readable label for a PeakURL user.
  */
 export function getUserLabel(user: PeakUrlUser): string {
-    const fullName = [readString(user.firstName), readString(user.lastName)]
+    const fullName = [stringValue(user.firstName), stringValue(user.lastName)]
         .filter(Boolean)
         .join(" ");
     return (
         fullName ||
-        readString(user.username) ||
-        readString(user.email) ||
+        stringValue(user.username) ||
+        stringValue(user.email) ||
         String(user.id ?? "unknown")
     );
 }
@@ -24,8 +24,8 @@ export function getUserLabel(user: PeakUrlUser): string {
  */
 export function getQuietUserValue(user: PeakUrlUser): string {
     return (
-        readString(user.username) ||
-        readString(user.email) ||
+        stringValue(user.username) ||
+        stringValue(user.email) ||
         String(user.id ?? "")
     );
 }
@@ -36,9 +36,9 @@ export function getQuietUserValue(user: PeakUrlUser): string {
 export function formatUserDetails(user: PeakUrlUser): string {
     const lines = [
         ["Name", getUserLabel(user)],
-        ["Username", readString(user.username)],
-        ["Email", readString(user.email)],
-        ["Role", readString(user.role)],
+        ["Username", stringValue(user.username)],
+        ["Email", stringValue(user.email)],
+        ["Role", stringValue(user.role)],
         ["ID", user.id === undefined ? undefined : String(user.id)],
     ].filter((entry): entry is [string, string] => Boolean(entry[1]));
 

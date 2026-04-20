@@ -9,7 +9,7 @@ import { listCommand } from "./commands/list.js";
 import { loginCommand } from "./commands/login.js";
 import { updateCommand } from "./commands/update.js";
 import { whoamiCommand } from "./commands/whoami.js";
-import { toCliError } from "./lib/errors.js";
+import { wrapCliError } from "./lib/errors.js";
 import { maybeShowUpdateNotice } from "./lib/update.js";
 import { writeStderr } from "./lib/output.js";
 
@@ -34,12 +34,12 @@ function parsePositiveInteger(label: string) {
 }
 
 /**
- * Reads the CLI version from `package.json` so help/version output stays aligned
+ * Returns the CLI version from `package.json` so help/version output stays aligned
  * with the package that will actually be published.
  *
  * @returns Version string exposed by the package manifest.
  */
-async function readVersion(): Promise<string> {
+async function getCliVersion(): Promise<string> {
     const packageJson = new URL("../package.json", import.meta.url);
     const content = await readFile(packageJson, "utf8");
     const parsed = JSON.parse(content) as { version?: string };
@@ -54,7 +54,7 @@ async function readVersion(): Promise<string> {
  */
 async function main(): Promise<void> {
     const program = new Command();
-    const version = await readVersion();
+    const version = await getCliVersion();
 
     // Keep command registration centralized here so the shipped CLI surface is
     // easy to audit against the backend routes and release notes.
@@ -185,7 +185,7 @@ Examples:
             process.exit(error.exitCode);
         }
 
-        const cliError = toCliError(error);
+        const cliError = wrapCliError(error);
         writeStderr(cliError.message);
         process.exit(cliError.exitCode);
     }

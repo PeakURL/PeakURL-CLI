@@ -45,7 +45,7 @@ function defaultStatePath(): string {
  *
  * @param filePath Absolute file path whose parent directory should exist.
  */
-async function ensureParentDirectory(filePath: string): Promise<string> {
+async function prepareFileDirectory(filePath: string): Promise<string> {
     const directory = dirname(filePath);
     await mkdir(directory, { recursive: true, mode: 0o700 });
     return directory;
@@ -130,7 +130,7 @@ export class ConfigStore {
     async save(config: PeakUrlConfig): Promise<void> {
         // Create the config directory first so both the JSON file and its
         // parent directory can be permission-hardened for local credentials.
-        const directory = await ensureParentDirectory(this.filePath);
+        const directory = await prepareFileDirectory(this.filePath);
         await writeFile(this.filePath, `${JSON.stringify(config, null, 2)}\n`, {
             mode: 0o600,
         });
@@ -186,9 +186,16 @@ export class StateStore {
      * @param state State payload to save.
      */
     async save(state: PeakUrlCliState): Promise<void> {
-        await ensureParentDirectory(this.filePath);
+        const directory = await prepareFileDirectory(this.filePath);
         await writeFile(this.filePath, `${JSON.stringify(state, null, 2)}\n`, {
             mode: 0o600,
         });
+
+        try {
+            await chmod(directory, 0o700);
+            await chmod(this.filePath, 0o600);
+        } catch {
+            // Ignore chmod errors on platforms that do not support POSIX-style modes.
+        }
     }
 }

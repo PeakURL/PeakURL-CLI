@@ -14,7 +14,7 @@ export class CliError extends Error {
 /**
  * Normalizes unknown failures into a CLI-safe error instance.
  */
-export function toCliError(error: unknown): CliError {
+export function wrapCliError(error: unknown): CliError {
     if (error instanceof CliError) {
         return error;
     }

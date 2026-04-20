@@ -1,27 +1,28 @@
 import type { PeakUrlLink } from "../types.js";
 import type { ListLinksMeta, ListLinksResponse } from "../api/client.js";
+import { formatTable } from "./output.js";
 
 const LIST_KEYS = ["urls", "items", "results"] as const;
 
-function asRecord(value: unknown): Record<string, unknown> | null {
+function objectValue(value: unknown): Record<string, unknown> | null {
     return value && typeof value === "object" && !Array.isArray(value)
         ? (value as Record<string, unknown>)
         : null;
 }
 
-function readString(value: unknown): string | undefined {
+function stringValue(value: unknown): string | undefined {
     return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function readNumber(value: unknown): number | undefined {
+function numberValue(value: unknown): number | undefined {
     return typeof value === "number" && Number.isFinite(value)
         ? value
         : undefined;
 }
 
-function firstString(link: PeakUrlLink, keys: string[]): string | undefined {
+function pickString(link: PeakUrlLink, keys: string[]): string | undefined {
     for (const key of keys) {
-        const value = readString(link[key]);
+        const value = stringValue(link[key]);
         if (value) {
             return value;
         }
@@ -39,28 +40,28 @@ function truncate(value: string, maxLength: number): string {
 function extractListMeta(
     data: ListLinksResponse | PeakUrlLink[] | unknown,
 ): ListLinksMeta | null {
-    const record = asRecord(data);
+    const record = objectValue(data);
 
     if (!record) {
         return null;
     }
 
-    const meta = asRecord(record.meta);
+    const meta = objectValue(record.meta);
     if (meta) {
         return {
-            page: readNumber(meta.page),
-            limit: readNumber(meta.limit),
-            totalItems: readNumber(meta.totalItems),
-            totalPages: readNumber(meta.totalPages),
+            page: numberValue(meta.page),
+            limit: numberValue(meta.limit),
+            totalItems: numberValue(meta.totalItems),
+            totalPages: numberValue(meta.totalPages),
         };
     }
 
     // Keep a fallback for earlier mock/test payloads that exposed flat fields.
     return {
-        page: readNumber(record.page),
-        limit: readNumber(record.limit),
-        totalItems: readNumber(record.total),
-        totalPages: readNumber(record.totalPages),
+        page: numberValue(record.page),
+        limit: numberValue(record.limit),
+        totalItems: numberValue(record.total),
+        totalPages: numberValue(record.totalPages),
     };
 }
 
@@ -77,7 +78,7 @@ export function extractLinks(
         return data as PeakUrlLink[];
     }
 
-    const record = asRecord(data);
+    const record = objectValue(data);
     if (record) {
         for (const key of LIST_KEYS) {
             const value = record[key];
@@ -98,7 +99,7 @@ export function extractLinks(
  */
 export function getLinkId(link: PeakUrlLink): string | undefined {
     return (
-        firstString(link, ["id", "_id", "urlId"]) ||
+        pickString(link, ["id", "_id", "urlId"]) ||
         (link.id !== undefined ? String(link.id) : undefined)
     );
 }
@@ -110,7 +111,7 @@ export function getLinkId(link: PeakUrlLink): string | undefined {
  * @returns Alias-like value when present.
  */
 export function getLinkAlias(link: PeakUrlLink): string | undefined {
-    return firstString(link, ["alias", "shortCode", "slug", "code"]);
+    return pickString(link, ["alias", "shortCode", "slug", "code"]);
 }
 
 /**
@@ -120,7 +121,7 @@ export function getLinkAlias(link: PeakUrlLink): string | undefined {
  * @returns Short URL when present.
  */
 export function getLinkShortUrl(link: PeakUrlLink): string | undefined {
-    return firstString(link, ["shortUrl", "shortLink", "shortURL", "url"]);
+    return pickString(link, ["shortUrl", "shortLink", "shortURL", "url"]);
 }
 
 /**
@@ -130,7 +131,7 @@ export function getLinkShortUrl(link: PeakUrlLink): string | undefined {
  * @returns Destination URL when present.
  */
 export function getLinkDestination(link: PeakUrlLink): string | undefined {
-    return firstString(link, [
+    return pickString(link, [
         "destinationUrl",
         "originalUrl",
         "targetUrl",
@@ -160,16 +161,16 @@ export function formatLinkDetails(link: PeakUrlLink): string {
         ["Alias", getLinkAlias(link)],
         ["Short URL", getLinkShortUrl(link)],
         ["Destination", getLinkDestination(link)],
-        ["Title", readString(link.title)],
-        ["Status", readString(link.status)],
+        ["Title", stringValue(link.title)],
+        ["Status", stringValue(link.status)],
         [
             "Clicks",
-            readNumber(link.clicks) === undefined
+            numberValue(link.clicks) === undefined
                 ? undefined
                 : String(link.clicks),
         ],
-        ["Created", readString(link.createdAt)],
-        ["Updated", readString(link.updatedAt)],
+        ["Created", stringValue(link.createdAt)],
+        ["Updated", stringValue(link.updatedAt)],
     ].filter((entry): entry is [string, string] => Boolean(entry[1]));
 
     return lines.map(([label, value]) => `${label}: ${value}`).join("\n");
@@ -186,27 +187,16 @@ export function formatLinksTable(links: PeakUrlLink[]): string {
         return "No links found.";
     }
 
-    const headers = ["ID", "ALIAS", "SHORT URL", "DESTINATION", "STATUS"];
+    const headers = ["ID", "Alias", "Short URL", "Destination", "Status"];
     const rows = links.map((link) => [
         truncate(getLinkId(link) || "-", 18),
-        truncate(getLinkAlias(link) || "-", 18),
+        truncate(getLinkAlias(link) || "-", 12),
         truncate(getLinkShortUrl(link) || "-", 36),
         truncate(getLinkDestination(link) || "-", 52),
-        truncate(readString(link.status) || "-", 12),
+        truncate(stringValue(link.status) || "-", 12),
     ]);
 
-    const widths = headers.map((header, index) =>
-        Math.max(header.length, ...rows.map((row) => row[index].length)),
-    );
-
-    const renderRow = (row: string[]): string =>
-        row.map((cell, index) => cell.padEnd(widths[index])).join("  ");
-
-    return [
-        renderRow(headers),
-        renderRow(widths.map((width) => "-".repeat(width))),
-        ...rows.map(renderRow),
-    ].join("\n");
+    return formatTable(headers, rows);
 }
 
 /**

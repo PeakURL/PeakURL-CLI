@@ -20,7 +20,7 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
 
     await new ConfigStore().save(credentials);
 
-    const payload = {
+    const responseBody = {
         success: true,
         message: `Saved credentials for ${credentials.baseUrl}.`,
         data: {
@@ -31,7 +31,7 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
     };
 
     if (options.json) {
-        writeJson(payload);
+        writeJson(responseBody);
         return;
     }
 

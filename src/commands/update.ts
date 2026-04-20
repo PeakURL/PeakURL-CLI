@@ -20,7 +20,7 @@ export async function updateCommand(
         forceRefresh: true,
     });
 
-    const payload = {
+    const responseBody = {
         success: true,
         message: status.isOutdated
             ? `A newer PeakURL CLI version is available (${status.latestVersion}).`
@@ -36,7 +36,7 @@ export async function updateCommand(
     };
 
     if (options.json) {
-        writeJson(payload);
+        writeJson(responseBody);
         return;
     }
 

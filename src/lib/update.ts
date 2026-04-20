@@ -35,7 +35,7 @@ interface MaybeNotifyOptions {
     env: NodeJS.ProcessEnv;
 }
 
-function readTimestamp(value?: string): number | null {
+function parseTime(value?: string): number | null {
     if (!value) {
         return null;
     }
@@ -44,8 +44,28 @@ function readTimestamp(value?: string): number | null {
     return Number.isNaN(parsed) ? null : parsed;
 }
 
-function getRegistryUrl(env: NodeJS.ProcessEnv): string {
-    return env.PEAKURL_NPM_REGISTRY_URL?.trim() || DEFAULT_REGISTRY_URL;
+function getRegistryBaseUrl(env: NodeJS.ProcessEnv): string {
+    const candidate = env.PEAKURL_NPM_REGISTRY_URL?.trim();
+
+    if (!candidate) {
+        return DEFAULT_REGISTRY_URL;
+    }
+
+    try {
+        const parsed = new URL(candidate);
+
+        if (
+            (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+            parsed.username ||
+            parsed.password
+        ) {
+            return DEFAULT_REGISTRY_URL;
+        }
+
+        return candidate;
+    } catch {
+        return DEFAULT_REGISTRY_URL;
+    }
 }
 
 function normalizeRegistryUrl(registryUrl: string): string {
@@ -168,14 +188,14 @@ export function compareSemver(left: string, right: string): number {
  *
  * @returns One-line install command.
  */
-export function getInstallCommand(): string {
+export function getUpdateInstallCommand(): string {
     return `npm install -g ${PACKAGE_NAME}@latest`;
 }
 
-async function fetchLatestVersion(
+async function fetchLatestPackageVersion(
     env: NodeJS.ProcessEnv,
 ): Promise<string | null> {
-    const registryUrl = normalizeRegistryUrl(getRegistryUrl(env));
+    const registryUrl = normalizeRegistryUrl(getRegistryBaseUrl(env));
     const url = `${registryUrl}/${PACKAGE_NAME}/latest`;
 
     const controller = new AbortController();
@@ -202,9 +222,7 @@ async function fetchLatestVersion(
     }
 }
 
-async function loadLatestVersionFromState(
-    store: StateStore,
-): Promise<UpdateState> {
+async function getCachedUpdateState(store: StateStore): Promise<UpdateState> {
     const state = await store.load();
     return state.update ?? {};
 }
@@ -220,13 +238,13 @@ async function saveUpdateState(
     });
 }
 
-async function resolveLatestVersion(
+async function getLatestPackageVersion(
     env: NodeJS.ProcessEnv,
     options?: { forceRefresh?: boolean; store?: StateStore },
 ): Promise<string | null> {
     const store = options?.store ?? new StateStore();
-    const updateState = await loadLatestVersionFromState(store);
-    const lastCheckedAt = readTimestamp(updateState.lastCheckedAt);
+    const updateState = await getCachedUpdateState(store);
+    const lastCheckedAt = parseTime(updateState.lastCheckedAt);
     const now = Date.now();
 
     if (
@@ -238,7 +256,7 @@ async function resolveLatestVersion(
         return updateState.latestVersion;
     }
 
-    const latestVersion = await fetchLatestVersion(env);
+    const latestVersion = await fetchLatestPackageVersion(env);
 
     if (!latestVersion) {
         return updateState.latestVersion ?? null;
@@ -266,7 +284,7 @@ export async function getUpdateStatus(
     env: NodeJS.ProcessEnv,
     options?: { forceRefresh?: boolean; store?: StateStore },
 ): Promise<UpdateStatus> {
-    const resolvedLatestVersion = await resolveLatestVersion(env, {
+    const resolvedLatestVersion = await getLatestPackageVersion(env, {
         forceRefresh: options?.forceRefresh,
         store: options?.store,
     });
@@ -283,7 +301,7 @@ export async function getUpdateStatus(
         currentVersion,
         latestVersion,
         isOutdated: compareSemver(currentVersion, latestVersion) < 0,
-        installCommand: getInstallCommand(),
+        installCommand: getUpdateInstallCommand(),
     };
 }
 
@@ -327,7 +345,7 @@ export async function maybeShowUpdateNotice(
     }
 
     const store = new StateStore();
-    const updateState = await loadLatestVersionFromState(store);
+    const updateState = await getCachedUpdateState(store);
     const status = await getUpdateStatus(options.currentVersion, options.env, {
         store,
     });
@@ -336,7 +354,7 @@ export async function maybeShowUpdateNotice(
         return;
     }
 
-    const lastNotifiedAt = readTimestamp(updateState.lastNotifiedAt);
+    const lastNotifiedAt = parseTime(updateState.lastNotifiedAt);
     const alreadyNotifiedForVersion =
         updateState.lastNotifiedVersion === status.latestVersion;
 

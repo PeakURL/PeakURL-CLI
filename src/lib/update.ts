@@ -1,6 +1,6 @@
 import { CliError } from "./errors.js";
 import { writeNoticeBox } from "./output.js";
-import { StateStore } from "../config/store.js";
+import { StateStore } from "../config/index.js";
 
 const PACKAGE_NAME = "peakurl";
 const DEFAULT_REGISTRY_URL = "https://registry.npmjs.org";
@@ -28,7 +28,7 @@ export interface UpdateStatus {
     installCommand: string;
 }
 
-interface MaybeNotifyOptions {
+interface UpdateOptions {
     currentVersion: string;
     commandName: string;
     options?: { json?: boolean; quiet?: boolean };
@@ -192,7 +192,7 @@ export function getUpdateInstallCommand(): string {
     return `npm install -g ${PACKAGE_NAME}@latest`;
 }
 
-async function fetchLatestPackageVersion(
+async function fetchLatestVersion(
     env: NodeJS.ProcessEnv,
 ): Promise<string | null> {
     const registryUrl = normalizeRegistryUrl(getRegistryBaseUrl(env));
@@ -222,7 +222,7 @@ async function fetchLatestPackageVersion(
     }
 }
 
-async function getCachedUpdateState(store: StateStore): Promise<UpdateState> {
+async function getUpdateState(store: StateStore): Promise<UpdateState> {
     const state = await store.load();
     return state.update ?? {};
 }
@@ -238,12 +238,12 @@ async function saveUpdateState(
     });
 }
 
-async function getLatestPackageVersion(
+async function loadLatestVersion(
     env: NodeJS.ProcessEnv,
     options?: { forceRefresh?: boolean; store?: StateStore },
 ): Promise<string | null> {
     const store = options?.store ?? new StateStore();
-    const updateState = await getCachedUpdateState(store);
+    const updateState = await getUpdateState(store);
     const lastCheckedAt = parseTime(updateState.lastCheckedAt);
     const now = Date.now();
 
@@ -256,7 +256,7 @@ async function getLatestPackageVersion(
         return updateState.latestVersion;
     }
 
-    const latestVersion = await fetchLatestPackageVersion(env);
+    const latestVersion = await fetchLatestVersion(env);
 
     if (!latestVersion) {
         return updateState.latestVersion ?? null;
@@ -284,7 +284,7 @@ export async function getUpdateStatus(
     env: NodeJS.ProcessEnv,
     options?: { forceRefresh?: boolean; store?: StateStore },
 ): Promise<UpdateStatus> {
-    const resolvedLatestVersion = await getLatestPackageVersion(env, {
+    const resolvedLatestVersion = await loadLatestVersion(env, {
         forceRefresh: options?.forceRefresh,
         store: options?.store,
     });
@@ -310,7 +310,7 @@ export async function getUpdateStatus(
  *
  * @param status Outdated version status resolved from the registry.
  */
-export function writeUpdateNotice(status: UpdateStatus): void {
+export function showUpdateNotice(status: UpdateStatus): void {
     writeNoticeBox("Update Available", [
         `${PACKAGE_NAME} ${status.currentVersion} -> ${status.latestVersion}`,
         `Run: ${status.installCommand}`,
@@ -325,9 +325,7 @@ export function writeUpdateNotice(status: UpdateStatus): void {
  *
  * @param options Current command execution context.
  */
-export async function maybeShowUpdateNotice(
-    options: MaybeNotifyOptions,
-): Promise<void> {
+export async function checkUpdates(options: UpdateOptions): Promise<void> {
     if (
         options.env.PEAKURL_DISABLE_UPDATE_CHECK === "1" ||
         options.commandName === "update" ||
@@ -345,7 +343,7 @@ export async function maybeShowUpdateNotice(
     }
 
     const store = new StateStore();
-    const updateState = await getCachedUpdateState(store);
+    const updateState = await getUpdateState(store);
     const status = await getUpdateStatus(options.currentVersion, options.env, {
         store,
     });
@@ -372,5 +370,5 @@ export async function maybeShowUpdateNotice(
         lastNotifiedVersion: status.latestVersion,
     });
 
-    writeUpdateNotice(status);
+    showUpdateNotice(status);
 }

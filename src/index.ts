@@ -2,16 +2,23 @@
 
 import { readFile } from "node:fs/promises";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
-import { createCommand } from "./commands/create.js";
-import { deleteCommand } from "./commands/delete.js";
-import { getCommand } from "./commands/get.js";
-import { listCommand } from "./commands/list.js";
-import { loginCommand } from "./commands/login.js";
-import { updateCommand } from "./commands/update.js";
-import { whoamiCommand } from "./commands/whoami.js";
-import { wrapCliError } from "./lib/errors.js";
-import { maybeShowUpdateNotice } from "./lib/update.js";
-import { writeStderr } from "./lib/output.js";
+import {
+    createCommand,
+    deleteCommand,
+    getCommand,
+    listCommand,
+    loginCommand,
+    logoutCommand,
+    updateCommand,
+    whoamiCommand,
+} from "./commands/index.js";
+import {
+    authRows,
+    formatTable,
+    checkUpdates,
+    ensureCliError,
+    writeStderr,
+} from "./lib/index.js";
 
 /**
  * Builds a Commander parser for positive integer flags such as `--page`.
@@ -19,7 +26,7 @@ import { writeStderr } from "./lib/output.js";
  * @param label Human-readable option name for validation messages.
  * @returns Parser function passed directly to Commander.
  */
-function parsePositiveInteger(label: string) {
+function parseNumber(label: string) {
     return (value: string): number => {
         const parsed = Number.parseInt(value, 10);
 
@@ -70,6 +77,7 @@ async function main(): Promise<void> {
 Examples:
   peakurl login --base-url https://peakurl.org --api-key 0123456789abcdef0123456789abcdef0123456789abcdef
   peakurl whoami --json
+  peakurl logout
   peakurl create https://example.com --alias example
   peakurl list --limit 10
   peakurl update --check
@@ -85,7 +93,7 @@ Examples:
             | { json?: boolean; quiet?: boolean }
             | undefined;
 
-        await maybeShowUpdateNotice({
+        await checkUpdates({
             currentVersion: version,
             commandName: actionCommand.name(),
             options,
@@ -115,6 +123,13 @@ Examples:
         .action(whoamiCommand);
 
     program
+        .command("logout")
+        .description("Remove saved PeakURL credentials from this device.")
+        .option("--json", "Print machine-readable output")
+        .option("--quiet", "Suppress success output")
+        .action(logoutCommand);
+
+    program
         .command("create")
         .description("Create a PeakURL short link.")
         .argument("<url>", "Destination URL to shorten")
@@ -138,8 +153,8 @@ Examples:
     program
         .command("list")
         .description("List PeakURL short links.")
-        .option("--page <number>", "Page number", parsePositiveInteger("page"))
-        .option("--limit <number>", "Page size", parsePositiveInteger("limit"))
+        .option("--page <number>", "Page number", parseNumber("page"))
+        .option("--limit <number>", "Page size", parseNumber("limit"))
         .option("--search <query>", "Search term")
         .option("--sort-by <field>", "Sort field")
         .option("--sort-order <order>", "Sort order, for example asc or desc")
@@ -185,8 +200,15 @@ Examples:
             process.exit(error.exitCode);
         }
 
-        const cliError = wrapCliError(error);
-        writeStderr(cliError.message);
+        const cliError = ensureCliError(error);
+
+        if (cliError.kind === "auth_required") {
+            writeStderr("Not logged in.");
+            writeStderr(formatTable(["Field", "Value"], authRows(), "stderr"));
+        } else {
+            writeStderr(cliError.message);
+        }
+
         process.exit(cliError.exitCode);
     }
 }

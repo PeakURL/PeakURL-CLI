@@ -1,11 +1,25 @@
-import type { PeakUrlConfig } from "../types.js";
-import { ConfigStore } from "../config/store.js";
+import type { AuthConfig } from "../types.js";
+import { ConfigStore } from "../config/index.js";
 import { CliError } from "./errors.js";
 import { normalizeBaseUrl } from "./url.js";
+
+export const AUTH_REQUIRED_MESSAGE = "PeakURL credentials are not configured.";
 
 interface LoginInput {
     baseUrl?: string;
     apiKey?: string;
+}
+
+/**
+ * Returns the human-readable auth setup rows shown when no credentials exist.
+ */
+export function authRows(): string[][] {
+    return [
+        ["Reason", AUTH_REQUIRED_MESSAGE],
+        ["Command", "peakurl login"],
+        ["Flags", "--base-url <url> --api-key <key>"],
+        ["Env", "PEAKURL_BASE_URL, PEAKURL_API_KEY"],
+    ];
 }
 
 /**
@@ -19,10 +33,10 @@ interface LoginInput {
  * @returns Normalized login credential set.
  * @throws {CliError} When either required credential is missing.
  */
-export function resolveLoginConfig(
+export function getLoginConfig(
     input: LoginInput,
     env: NodeJS.ProcessEnv,
-): PeakUrlConfig {
+): AuthConfig {
     const baseUrl = input.baseUrl?.trim() || env.PEAKURL_BASE_URL?.trim();
     const apiKey = input.apiKey?.trim() || env.PEAKURL_API_KEY?.trim();
 
@@ -49,10 +63,10 @@ export function resolveLoginConfig(
  * @returns Resolved credential set for API requests.
  * @throws {CliError} When no usable credentials are available.
  */
-export async function resolveStoredConfig(
+export async function getAuthConfig(
     env: NodeJS.ProcessEnv,
     store = new ConfigStore(),
-): Promise<PeakUrlConfig> {
+): Promise<AuthConfig> {
     const saved = await store.load();
 
     // CI and automation should be able to override the local config file
@@ -61,9 +75,9 @@ export async function resolveStoredConfig(
     const apiKey = env.PEAKURL_API_KEY?.trim() || saved?.apiKey;
 
     if (!baseUrl || !apiKey) {
-        throw new CliError(
-            "PeakURL credentials are not configured. Run `peakurl login --base-url ... --api-key ...` or set PEAKURL_BASE_URL and PEAKURL_API_KEY.",
-        );
+        throw new CliError(AUTH_REQUIRED_MESSAGE, 1, {
+            kind: "auth_required",
+        });
     }
 
     return {

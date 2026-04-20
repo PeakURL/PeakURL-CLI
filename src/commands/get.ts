@@ -1,7 +1,11 @@
-import { PeakUrlApiClient } from "../api/client.js";
-import { resolveStoredConfig } from "../lib/auth.js";
-import { formatLinkDetails, getQuietLinkValue } from "../lib/links.js";
-import { writeJson, writeStdout } from "../lib/output.js";
+import { ApiClient } from "../api/index.js";
+import {
+    formatLinkDetails,
+    getQuietLinkValue,
+    getAuthConfig,
+    writeJson,
+    writeStdout,
+} from "../lib/index.js";
 import type { OutputOptions } from "../types.js";
 
 /**
@@ -11,8 +15,8 @@ export async function getCommand(
     idOrAlias: string,
     options: OutputOptions,
 ): Promise<void> {
-    const config = await resolveStoredConfig(process.env);
-    const response = await new PeakUrlApiClient(config).getUrl(idOrAlias);
+    const config = await getAuthConfig(process.env);
+    const response = await new ApiClient(config).getUrl(idOrAlias);
 
     if (options.json) {
         writeJson(response);

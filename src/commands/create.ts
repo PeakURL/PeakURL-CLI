@@ -1,9 +1,13 @@
-import { PeakUrlApiClient } from "../api/client.js";
-import { resolveStoredConfig } from "../lib/auth.js";
-import { CliError } from "../lib/errors.js";
-import { formatLinkDetails, getQuietLinkValue } from "../lib/links.js";
-import { writeJson, writeStdout } from "../lib/output.js";
-import { normalizeDestinationUrl } from "../lib/url.js";
+import { ApiClient } from "../api/index.js";
+import {
+    CliError,
+    formatLinkDetails,
+    getQuietLinkValue,
+    normalizeDestinationUrl,
+    getAuthConfig,
+    writeJson,
+    writeStdout,
+} from "../lib/index.js";
 import type { OutputOptions } from "../types.js";
 
 interface CreateOptions extends OutputOptions {
@@ -38,8 +42,8 @@ export async function createCommand(
     destinationUrl: string,
     options: CreateOptions,
 ): Promise<void> {
-    const config = await resolveStoredConfig(process.env);
-    const response = await new PeakUrlApiClient(config).createUrl({
+    const config = await getAuthConfig(process.env);
+    const response = await new ApiClient(config).createUrl({
         destinationUrl: normalizeDestinationUrl(destinationUrl),
         ...(options.alias ? { alias: options.alias } : {}),
         ...(options.title ? { title: options.title } : {}),

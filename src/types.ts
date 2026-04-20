@@ -1,7 +1,7 @@
 /**
  * Standard PeakURL API response envelope.
  */
-export interface PeakUrlEnvelope<T = unknown> {
+export interface ApiResponse<T = unknown> {
     success: boolean;
     message: string;
     data: T;
@@ -11,7 +11,7 @@ export interface PeakUrlEnvelope<T = unknown> {
 /**
  * Persisted or environment-provided CLI credentials.
  */
-export interface PeakUrlConfig {
+export interface AuthConfig {
     baseUrl: string;
     apiKey: string;
 }
@@ -27,7 +27,7 @@ export interface OutputOptions {
 /**
  * User fields commonly returned by `GET /users/me`.
  */
-export interface PeakUrlUser {
+export interface User {
     id?: string | number;
     username?: string;
     email?: string;
@@ -40,7 +40,7 @@ export interface PeakUrlUser {
 /**
  * URL fields commonly returned by PeakURL URL endpoints.
  */
-export interface PeakUrlLink {
+export interface Link {
     id?: string | number;
     alias?: string;
     shortCode?: string;

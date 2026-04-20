@@ -1,15 +1,19 @@
-import { PeakUrlApiClient } from "../api/client.js";
-import { resolveStoredConfig } from "../lib/auth.js";
-import { writeJson, writeStdout } from "../lib/output.js";
-import { formatUserDetails, getQuietUserValue } from "../lib/users.js";
+import { ApiClient } from "../api/index.js";
+import {
+    getAuthConfig,
+    userTable,
+    userValue,
+    writeJson,
+    writeStdout,
+} from "../lib/index.js";
 import type { OutputOptions } from "../types.js";
 
 /**
  * Prints the current authenticated user.
  */
 export async function whoamiCommand(options: OutputOptions): Promise<void> {
-    const config = await resolveStoredConfig(process.env);
-    const response = await new PeakUrlApiClient(config).whoami();
+    const config = await getAuthConfig(process.env);
+    const response = await new ApiClient(config).whoami();
 
     if (options.json) {
         writeJson(response);
@@ -17,10 +21,10 @@ export async function whoamiCommand(options: OutputOptions): Promise<void> {
     }
 
     if (options.quiet) {
-        writeStdout(getQuietUserValue(response.data));
+        writeStdout(userValue(response.data));
         return;
     }
 
     writeStdout(response.message);
-    writeStdout(formatUserDetails(response.data));
+    writeStdout(userTable(response.data));
 }

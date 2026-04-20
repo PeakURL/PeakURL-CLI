@@ -1,25 +1,20 @@
-import type {
-    PeakUrlConfig,
-    PeakUrlEnvelope,
-    PeakUrlLink,
-    PeakUrlUser,
-} from "../types.js";
+import type { ApiResponse, AuthConfig, Link, User } from "../types.js";
 import { CliError } from "../lib/errors.js";
 import { buildApiUrl } from "../lib/url.js";
 
 type QueryParams = Record<string, string | number | undefined>;
 
-interface ListLinksMeta {
+interface ListMeta {
     page?: number;
     limit?: number;
     totalItems?: number;
     totalPages?: number;
 }
 
-interface ListLinksResponse {
-    items?: PeakUrlLink[];
-    results?: PeakUrlLink[];
-    meta?: ListLinksMeta;
+interface ListData {
+    items?: Link[];
+    results?: Link[];
+    meta?: ListMeta;
     [key: string]: unknown;
 }
 
@@ -29,7 +24,7 @@ interface ListLinksResponse {
  * @param value Parsed JSON payload.
  * @returns `true` when the payload matches the envelope contract.
  */
-function isEnvelope(value: unknown): value is PeakUrlEnvelope {
+function isApiResponse(value: unknown): value is ApiResponse {
     return Boolean(
         value &&
         typeof value === "object" &&
@@ -46,7 +41,7 @@ function isEnvelope(value: unknown): value is PeakUrlEnvelope {
  * @param error Underlying fetch error.
  * @returns Human-readable network error message.
  */
-function formatNetworkError(baseUrl: string, error: unknown): string {
+function networkError(baseUrl: string, error: unknown): string {
     if (error instanceof Error && error.message) {
         return `Could not reach PeakURL at ${baseUrl}. ${error.message}`;
     }
@@ -60,13 +55,13 @@ function formatNetworkError(baseUrl: string, error: unknown): string {
  * All command handlers depend on this class so HTTP behavior, auth headers,
  * envelope parsing, and API error normalization stay in one place.
  */
-export class PeakUrlApiClient {
+export class ApiClient {
     /**
      * Creates a client bound to one resolved credential set.
      *
      * @param config Normalized base URL plus bearer API key.
      */
-    constructor(private readonly config: PeakUrlConfig) {}
+    constructor(private readonly config: AuthConfig) {}
 
     /**
      * Loads the currently authenticated user.
@@ -76,8 +71,8 @@ export class PeakUrlApiClient {
      *
      * @returns API response envelope containing the authenticated user.
      */
-    whoami(): Promise<PeakUrlEnvelope<PeakUrlUser>> {
-        return this.request<PeakUrlUser>("GET", "users/me");
+    whoami(): Promise<ApiResponse<User>> {
+        return this.request<User>("GET", "users/me");
     }
 
     /**
@@ -86,10 +81,8 @@ export class PeakUrlApiClient {
      * @param payload Request body accepted by `POST /api/v1/urls`.
      * @returns API response envelope containing the created link.
      */
-    createUrl(
-        payload: Record<string, string>,
-    ): Promise<PeakUrlEnvelope<PeakUrlLink>> {
-        return this.request<PeakUrlLink>("POST", "urls", payload);
+    createUrl(payload: Record<string, string>): Promise<ApiResponse<Link>> {
+        return this.request<Link>("POST", "urls", payload);
     }
 
     /**
@@ -101,15 +94,8 @@ export class PeakUrlApiClient {
      * @param query Optional query-string values.
      * @returns API response envelope containing list data.
      */
-    listUrls(
-        query?: QueryParams,
-    ): Promise<PeakUrlEnvelope<ListLinksResponse | PeakUrlLink[]>> {
-        return this.request<ListLinksResponse | PeakUrlLink[]>(
-            "GET",
-            "urls",
-            undefined,
-            query,
-        );
+    listUrls(query?: QueryParams): Promise<ApiResponse<ListData | Link[]>> {
+        return this.request<ListData | Link[]>("GET", "urls", undefined, query);
     }
 
     /**
@@ -120,8 +106,8 @@ export class PeakUrlApiClient {
      * @param idOrAlias Link identifier, short code, or alias.
      * @returns API response envelope containing the resolved link.
      */
-    getUrl(idOrAlias: string): Promise<PeakUrlEnvelope<PeakUrlLink>> {
-        return this.request<PeakUrlLink>(
+    getUrl(idOrAlias: string): Promise<ApiResponse<Link>> {
+        return this.request<Link>(
             "GET",
             `urls/${encodeURIComponent(idOrAlias)}`,
         );
@@ -136,7 +122,7 @@ export class PeakUrlApiClient {
      * @param id Stable link row ID.
      * @returns API response envelope containing the deletion result.
      */
-    deleteUrl(id: string): Promise<PeakUrlEnvelope<unknown>> {
+    deleteUrl(id: string): Promise<ApiResponse<unknown>> {
         return this.request<unknown>(
             "DELETE",
             `urls/${encodeURIComponent(id)}`,
@@ -158,7 +144,7 @@ export class PeakUrlApiClient {
         path: string,
         body?: Record<string, unknown>,
         query?: QueryParams,
-    ): Promise<PeakUrlEnvelope<T>> {
+    ): Promise<ApiResponse<T>> {
         const url = buildApiUrl(this.config.baseUrl, path, query);
 
         let response: Response;
@@ -174,13 +160,9 @@ export class PeakUrlApiClient {
                 body: body ? JSON.stringify(body) : undefined,
             });
         } catch (error) {
-            throw new CliError(
-                formatNetworkError(this.config.baseUrl, error),
-                1,
-                {
-                    cause: error instanceof Error ? error : undefined,
-                },
-            );
+            throw new CliError(networkError(this.config.baseUrl, error), 1, {
+                cause: error instanceof Error ? error : undefined,
+            });
         }
 
         const rawText = await response.text();
@@ -216,7 +198,7 @@ export class PeakUrlApiClient {
             throw new CliError("PeakURL returned an invalid JSON response.");
         }
 
-        if (!isEnvelope(parsed)) {
+        if (!isApiResponse(parsed)) {
             throw new CliError(
                 "PeakURL returned an unexpected response envelope.",
             );
@@ -231,8 +213,8 @@ export class PeakUrlApiClient {
             );
         }
 
-        return parsed as PeakUrlEnvelope<T>;
+        return parsed as ApiResponse<T>;
     }
 }
 
-export type { ListLinksMeta, ListLinksResponse };
+export type { ListData, ListMeta };

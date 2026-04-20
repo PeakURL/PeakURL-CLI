@@ -1,28 +1,28 @@
-import type { PeakUrlLink } from "../types.js";
-import type { ListLinksMeta, ListLinksResponse } from "../api/client.js";
+import type { Link } from "../types.js";
+import type { ListData, ListMeta } from "../api/index.js";
 import { formatTable } from "./output.js";
 
 const LIST_KEYS = ["urls", "items", "results"] as const;
 
-function objectValue(value: unknown): Record<string, unknown> | null {
+function asObject(value: unknown): Record<string, unknown> | null {
     return value && typeof value === "object" && !Array.isArray(value)
         ? (value as Record<string, unknown>)
         : null;
 }
 
-function stringValue(value: unknown): string | undefined {
+function asString(value: unknown): string | undefined {
     return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function numberValue(value: unknown): number | undefined {
+function asNumber(value: unknown): number | undefined {
     return typeof value === "number" && Number.isFinite(value)
         ? value
         : undefined;
 }
 
-function pickString(link: PeakUrlLink, keys: string[]): string | undefined {
+function pickText(link: Link, keys: string[]): string | undefined {
     for (const key of keys) {
-        const value = stringValue(link[key]);
+        const value = asString(link[key]);
         if (value) {
             return value;
         }
@@ -37,31 +37,29 @@ function truncate(value: string, maxLength: number): string {
         : value;
 }
 
-function extractListMeta(
-    data: ListLinksResponse | PeakUrlLink[] | unknown,
-): ListLinksMeta | null {
-    const record = objectValue(data);
+function getListMeta(data: ListData | Link[] | unknown): ListMeta | null {
+    const record = asObject(data);
 
     if (!record) {
         return null;
     }
 
-    const meta = objectValue(record.meta);
+    const meta = asObject(record.meta);
     if (meta) {
         return {
-            page: numberValue(meta.page),
-            limit: numberValue(meta.limit),
-            totalItems: numberValue(meta.totalItems),
-            totalPages: numberValue(meta.totalPages),
+            page: asNumber(meta.page),
+            limit: asNumber(meta.limit),
+            totalItems: asNumber(meta.totalItems),
+            totalPages: asNumber(meta.totalPages),
         };
     }
 
     // Keep a fallback for earlier mock/test payloads that exposed flat fields.
     return {
-        page: numberValue(record.page),
-        limit: numberValue(record.limit),
-        totalItems: numberValue(record.total),
-        totalPages: numberValue(record.totalPages),
+        page: asNumber(record.page),
+        limit: asNumber(record.limit),
+        totalItems: asNumber(record.total),
+        totalPages: asNumber(record.totalPages),
     };
 }
 
@@ -71,19 +69,17 @@ function extractListMeta(
  * @param data Raw `data` value from the PeakURL envelope.
  * @returns Normalized array of links.
  */
-export function extractLinks(
-    data: ListLinksResponse | PeakUrlLink[] | unknown,
-): PeakUrlLink[] {
+export function extractLinks(data: ListData | Link[] | unknown): Link[] {
     if (Array.isArray(data)) {
-        return data as PeakUrlLink[];
+        return data as Link[];
     }
 
-    const record = objectValue(data);
+    const record = asObject(data);
     if (record) {
         for (const key of LIST_KEYS) {
             const value = record[key];
             if (Array.isArray(value)) {
-                return value as PeakUrlLink[];
+                return value as Link[];
             }
         }
     }
@@ -97,9 +93,9 @@ export function extractLinks(
  * @param link Link payload from the API.
  * @returns Stable row identifier when present.
  */
-export function getLinkId(link: PeakUrlLink): string | undefined {
+export function getLinkId(link: Link): string | undefined {
     return (
-        pickString(link, ["id", "_id", "urlId"]) ||
+        pickText(link, ["id", "_id", "urlId"]) ||
         (link.id !== undefined ? String(link.id) : undefined)
     );
 }
@@ -110,8 +106,8 @@ export function getLinkId(link: PeakUrlLink): string | undefined {
  * @param link Link payload from the API.
  * @returns Alias-like value when present.
  */
-export function getLinkAlias(link: PeakUrlLink): string | undefined {
-    return pickString(link, ["alias", "shortCode", "slug", "code"]);
+export function getLinkAlias(link: Link): string | undefined {
+    return pickText(link, ["alias", "shortCode", "slug", "code"]);
 }
 
 /**
@@ -120,8 +116,8 @@ export function getLinkAlias(link: PeakUrlLink): string | undefined {
  * @param link Link payload from the API.
  * @returns Short URL when present.
  */
-export function getLinkShortUrl(link: PeakUrlLink): string | undefined {
-    return pickString(link, ["shortUrl", "shortLink", "shortURL", "url"]);
+export function getLinkShortUrl(link: Link): string | undefined {
+    return pickText(link, ["shortUrl", "shortLink", "shortURL", "url"]);
 }
 
 /**
@@ -130,8 +126,8 @@ export function getLinkShortUrl(link: PeakUrlLink): string | undefined {
  * @param link Link payload from the API.
  * @returns Destination URL when present.
  */
-export function getLinkDestination(link: PeakUrlLink): string | undefined {
-    return pickString(link, [
+export function getLinkDestination(link: Link): string | undefined {
+    return pickText(link, [
         "destinationUrl",
         "originalUrl",
         "targetUrl",
@@ -145,7 +141,7 @@ export function getLinkDestination(link: PeakUrlLink): string | undefined {
  * @param link Link payload from the API.
  * @returns Preferred compact link representation.
  */
-export function getQuietLinkValue(link: PeakUrlLink): string {
+export function getQuietLinkValue(link: Link): string {
     return getLinkShortUrl(link) || getLinkAlias(link) || getLinkId(link) || "";
 }
 
@@ -155,22 +151,22 @@ export function getQuietLinkValue(link: PeakUrlLink): string {
  * @param link Link payload from the API.
  * @returns Multi-line label/value block.
  */
-export function formatLinkDetails(link: PeakUrlLink): string {
+export function formatLinkDetails(link: Link): string {
     const lines = [
         ["ID", getLinkId(link)],
         ["Alias", getLinkAlias(link)],
         ["Short URL", getLinkShortUrl(link)],
         ["Destination", getLinkDestination(link)],
-        ["Title", stringValue(link.title)],
-        ["Status", stringValue(link.status)],
+        ["Title", asString(link.title)],
+        ["Status", asString(link.status)],
         [
             "Clicks",
-            numberValue(link.clicks) === undefined
+            asNumber(link.clicks) === undefined
                 ? undefined
                 : String(link.clicks),
         ],
-        ["Created", stringValue(link.createdAt)],
-        ["Updated", stringValue(link.updatedAt)],
+        ["Created", asString(link.createdAt)],
+        ["Updated", asString(link.updatedAt)],
     ].filter((entry): entry is [string, string] => Boolean(entry[1]));
 
     return lines.map(([label, value]) => `${label}: ${value}`).join("\n");
@@ -182,7 +178,7 @@ export function formatLinkDetails(link: PeakUrlLink): string {
  * @param links Link payload array from the API.
  * @returns Plain-text table for terminal output.
  */
-export function formatLinksTable(links: PeakUrlLink[]): string {
+export function formatLinksTable(links: Link[]): string {
     if (links.length === 0) {
         return "No links found.";
     }
@@ -193,7 +189,7 @@ export function formatLinksTable(links: PeakUrlLink[]): string {
         truncate(getLinkAlias(link) || "-", 12),
         truncate(getLinkShortUrl(link) || "-", 36),
         truncate(getLinkDestination(link) || "-", 52),
-        truncate(stringValue(link.status) || "-", 12),
+        truncate(asString(link.status) || "-", 12),
     ]);
 
     return formatTable(headers, rows);
@@ -207,10 +203,10 @@ export function formatLinksTable(links: PeakUrlLink[]): string {
  * @returns Human-readable list summary.
  */
 export function formatListSummary(
-    data: ListLinksResponse | PeakUrlLink[] | unknown,
+    data: ListData | Link[] | unknown,
     count: number,
 ): string {
-    const meta = extractListMeta(data);
+    const meta = getListMeta(data);
 
     if (!meta) {
         return `${count} link${count === 1 ? "" : "s"} returned.`;

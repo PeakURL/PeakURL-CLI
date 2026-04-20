@@ -1,5 +1,9 @@
-import { writeJson, writeNoticeBox, writeStdout } from "../lib/output.js";
-import { getUpdateStatus } from "../lib/update.js";
+import {
+    getUpdateStatus,
+    writeJson,
+    writeNoticeBox,
+    writeStdout,
+} from "../lib/index.js";
 import type { OutputOptions } from "../types.js";
 
 interface UpdateOptions extends OutputOptions {

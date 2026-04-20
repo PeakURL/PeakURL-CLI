@@ -1,13 +1,13 @@
-import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import envPaths from "env-paths";
-import type { PeakUrlConfig } from "../types.js";
+import type { AuthConfig } from "../types.js";
 import { CliError } from "../lib/errors.js";
 
 const CONFIG_FILENAME = "config.json";
 const STATE_FILENAME = "state.json";
 
-interface PeakUrlCliState {
+interface CliState {
     update?: {
         latestVersion?: string;
         lastCheckedAt?: string;
@@ -24,7 +24,7 @@ interface PeakUrlCliState {
  *
  * @returns Absolute config file path.
  */
-function defaultConfigPath(): string {
+function getConfigPath(): string {
     return join(envPaths("peakurl", { suffix: "" }).config, CONFIG_FILENAME);
 }
 
@@ -36,7 +36,7 @@ function defaultConfigPath(): string {
  *
  * @returns Absolute state file path.
  */
-function defaultStatePath(): string {
+function getStatePath(): string {
     return join(envPaths("peakurl", { suffix: "" }).config, STATE_FILENAME);
 }
 
@@ -45,7 +45,7 @@ function defaultStatePath(): string {
  *
  * @param filePath Absolute file path whose parent directory should exist.
  */
-async function prepareFileDirectory(filePath: string): Promise<string> {
+async function ensureParentDir(filePath: string): Promise<string> {
     const directory = dirname(filePath);
     await mkdir(directory, { recursive: true, mode: 0o700 });
     return directory;
@@ -66,7 +66,7 @@ export class ConfigStore {
      *
      * @param filePath Optional override used by tests or advanced callers.
      */
-    constructor(filePath = defaultConfigPath()) {
+    constructor(filePath = getConfigPath()) {
         this.filePath = filePath;
     }
 
@@ -79,10 +79,10 @@ export class ConfigStore {
      * @returns Stored config or `null` when the file does not exist.
      * @throws {CliError} When the file exists but is unreadable or invalid.
      */
-    async load(): Promise<PeakUrlConfig | null> {
+    async load(): Promise<AuthConfig | null> {
         try {
             const content = await readFile(this.filePath, "utf8");
-            const parsed = JSON.parse(content) as Partial<PeakUrlConfig>;
+            const parsed = JSON.parse(content) as Partial<AuthConfig>;
 
             if (
                 typeof parsed.baseUrl !== "string" ||
@@ -127,10 +127,10 @@ export class ConfigStore {
      *
      * @param config Normalized credential set to write.
      */
-    async save(config: PeakUrlConfig): Promise<void> {
+    async save(config: AuthConfig): Promise<void> {
         // Create the config directory first so both the JSON file and its
         // parent directory can be permission-hardened for local credentials.
-        const directory = await prepareFileDirectory(this.filePath);
+        const directory = await ensureParentDir(this.filePath);
         await writeFile(this.filePath, `${JSON.stringify(config, null, 2)}\n`, {
             mode: 0o600,
         });
@@ -140,6 +140,36 @@ export class ConfigStore {
             await chmod(this.filePath, 0o600);
         } catch {
             // Ignore chmod errors on platforms that do not support POSIX-style modes.
+        }
+    }
+
+    /**
+     * Removes the stored credential file.
+     *
+     * @returns `true` when a saved config file existed and was removed.
+     * @throws {CliError} When the file exists but cannot be removed.
+     */
+    async clear(): Promise<boolean> {
+        try {
+            await unlink(this.filePath);
+            return true;
+        } catch (error) {
+            if (
+                error instanceof Error &&
+                "code" in error &&
+                typeof error.code === "string" &&
+                error.code === "ENOENT"
+            ) {
+                return false;
+            }
+
+            throw new CliError(
+                `Could not remove PeakURL config at ${this.filePath}.`,
+                1,
+                {
+                    cause: error instanceof Error ? error : undefined,
+                },
+            );
         }
     }
 }
@@ -158,7 +188,7 @@ export class StateStore {
      *
      * @param filePath Optional override used by tests or advanced callers.
      */
-    constructor(filePath = defaultStatePath()) {
+    constructor(filePath = getStatePath()) {
         this.filePath = filePath;
     }
 
@@ -170,10 +200,10 @@ export class StateStore {
      *
      * @returns Parsed state object or an empty object.
      */
-    async load(): Promise<PeakUrlCliState> {
+    async load(): Promise<CliState> {
         try {
             const content = await readFile(this.filePath, "utf8");
-            const parsed = JSON.parse(content) as PeakUrlCliState | null;
+            const parsed = JSON.parse(content) as CliState | null;
             return parsed && typeof parsed === "object" ? parsed : {};
         } catch {
             return {};
@@ -185,8 +215,8 @@ export class StateStore {
      *
      * @param state State payload to save.
      */
-    async save(state: PeakUrlCliState): Promise<void> {
-        const directory = await prepareFileDirectory(this.filePath);
+    async save(state: CliState): Promise<void> {
+        const directory = await ensureParentDir(this.filePath);
         await writeFile(this.filePath, `${JSON.stringify(state, null, 2)}\n`, {
             mode: 0o600,
         });

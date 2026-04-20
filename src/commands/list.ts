@@ -1,12 +1,13 @@
-import { PeakUrlApiClient } from "../api/client.js";
-import { resolveStoredConfig } from "../lib/auth.js";
+import { ApiClient } from "../api/index.js";
 import {
     extractLinks,
     formatLinksTable,
     formatListSummary,
     getQuietLinkValue,
-} from "../lib/links.js";
-import { writeJson, writeStdout } from "../lib/output.js";
+    getAuthConfig,
+    writeJson,
+    writeStdout,
+} from "../lib/index.js";
 import type { OutputOptions } from "../types.js";
 
 interface ListOptions extends OutputOptions {
@@ -21,8 +22,8 @@ interface ListOptions extends OutputOptions {
  * Lists short links and renders them in human or machine-readable form.
  */
 export async function listCommand(options: ListOptions): Promise<void> {
-    const config = await resolveStoredConfig(process.env);
-    const response = await new PeakUrlApiClient(config).listUrls({
+    const config = await getAuthConfig(process.env);
+    const response = await new ApiClient(config).listUrls({
         page: options.page,
         limit: options.limit,
         search: options.search,

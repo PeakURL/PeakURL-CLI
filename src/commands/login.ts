@@ -1,8 +1,12 @@
-import { PeakUrlApiClient } from "../api/client.js";
-import { ConfigStore } from "../config/store.js";
-import { resolveLoginConfig } from "../lib/auth.js";
-import { writeJson, writeStdout } from "../lib/output.js";
-import { formatUserDetails, getUserLabel } from "../lib/users.js";
+import { ApiClient } from "../api/index.js";
+import { ConfigStore } from "../config/index.js";
+import {
+    getLoginConfig,
+    userLabel,
+    userTable,
+    writeJson,
+    writeStdout,
+} from "../lib/index.js";
 import type { OutputOptions } from "../types.js";
 
 interface LoginOptions extends OutputOptions {
@@ -14,8 +18,8 @@ interface LoginOptions extends OutputOptions {
  * Verifies credentials with PeakURL and stores them in the local config file.
  */
 export async function loginCommand(options: LoginOptions): Promise<void> {
-    const credentials = resolveLoginConfig(options, process.env);
-    const client = new PeakUrlApiClient(credentials);
+    const credentials = getLoginConfig(options, process.env);
+    const client = new ApiClient(credentials);
     const response = await client.whoami();
 
     await new ConfigStore().save(credentials);
@@ -40,6 +44,6 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
     }
 
     writeStdout(`Saved credentials for ${credentials.baseUrl}`);
-    writeStdout(`Authenticated as ${getUserLabel(response.data)}`);
-    writeStdout(formatUserDetails(response.data));
+    writeStdout(`Authenticated as ${userLabel(response.data)}`);
+    writeStdout(userTable(response.data));
 }

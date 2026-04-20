@@ -1,8 +1,11 @@
-import { PeakUrlApiClient } from "../api/client.js";
-import { resolveStoredConfig } from "../lib/auth.js";
-import { CliError } from "../lib/errors.js";
-import { getLinkId } from "../lib/links.js";
-import { writeJson, writeStdout } from "../lib/output.js";
+import { ApiClient } from "../api/index.js";
+import {
+    CliError,
+    getLinkId,
+    getAuthConfig,
+    writeJson,
+    writeStdout,
+} from "../lib/index.js";
 import type { OutputOptions } from "../types.js";
 
 /**
@@ -18,8 +21,8 @@ export async function deleteCommand(
     idOrAlias: string,
     options: OutputOptions,
 ): Promise<void> {
-    const config = await resolveStoredConfig(process.env);
-    const client = new PeakUrlApiClient(config);
+    const config = await getAuthConfig(process.env);
+    const client = new ApiClient(config);
 
     // Resolve aliases and short codes up front so delete works with the current
     // PeakURL backend, which deletes by row ID rather than generic identifier.

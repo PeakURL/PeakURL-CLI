@@ -190,7 +190,7 @@ peakurl update
 Install the latest version manually:
 
 ```bash
-npm install -g peakurl@latest
+npm i -g peakurl@latest
 ```
 
 Disable update notices in the current shell:

@@ -24,7 +24,7 @@ describe("PeakURL CLI Update Checks", () => {
                 `peakurl ${escapeForRegExp(getCliVersion())} -> ${escapeForRegExp(getLatestCliVersion())}`,
             ),
         );
-        assert.match(result.stderr, /Run: npm install -g peakurl@latest/);
+        assert.match(result.stderr, /Run: npm i -g peakurl@latest/);
     });
 
     it("returns update status as JSON without installing", async () => {
@@ -66,6 +66,6 @@ describe("PeakURL CLI Update Checks", () => {
                 `peakurl ${escapeForRegExp(getCliVersion())} -> ${escapeForRegExp(getLatestCliVersion())}`,
             ),
         );
-        assert.match(result.stdout, /Run: npm install -g peakurl@latest/);
+        assert.match(result.stdout, /Run: npm i -g peakurl@latest/);
     });
 });

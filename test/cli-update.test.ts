@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
     escapeForRegExp,
     getCliVersion,
+    getLatestCliVersion,
     mockBaseUrl,
     runCli,
 } from "./cli-test-harness.js";
@@ -20,7 +21,7 @@ describe("PeakURL CLI Update Checks", () => {
         assert.match(
             result.stderr,
             new RegExp(
-                `peakurl ${escapeForRegExp(getCliVersion())} -> 0\\.2\\.0`,
+                `peakurl ${escapeForRegExp(getCliVersion())} -> ${escapeForRegExp(getLatestCliVersion())}`,
             ),
         );
         assert.match(result.stderr, /Run: npm install -g peakurl@latest/);
@@ -46,7 +47,7 @@ describe("PeakURL CLI Update Checks", () => {
 
         assert.equal(parsed.success, true);
         assert.equal(parsed.data.currentVersion, getCliVersion());
-        assert.equal(parsed.data.latestVersion, "0.2.0");
+        assert.equal(parsed.data.latestVersion, getLatestCliVersion());
         assert.equal(parsed.data.isOutdated, true);
         assert.equal(parsed.data.checkOnly, true);
         assert.match(parsed.data.installCommand, /peakurl@latest/);
@@ -62,7 +63,7 @@ describe("PeakURL CLI Update Checks", () => {
         assert.match(
             result.stdout,
             new RegExp(
-                `peakurl ${escapeForRegExp(getCliVersion())} -> 0\\.2\\.0`,
+                `peakurl ${escapeForRegExp(getCliVersion())} -> ${escapeForRegExp(getLatestCliVersion())}`,
             ),
         );
         assert.match(result.stdout, /Run: npm install -g peakurl@latest/);

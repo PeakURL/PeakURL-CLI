@@ -37,6 +37,20 @@ let baseUrl = "";
 let cliVersion = "";
 let server: ReturnType<typeof createServer>;
 
+function getNextVersion(version: string): string {
+    const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+
+    if (!match) {
+        return version;
+    }
+
+    const major = Number.parseInt(match[1], 10);
+    const minor = Number.parseInt(match[2], 10);
+    const patch = Number.parseInt(match[3], 10) + 1;
+
+    return `${major}.${minor}.${patch}`;
+}
+
 function sendJsonResponse(
     response: ServerResponse,
     statusCode: number,
@@ -107,6 +121,10 @@ export function getCliVersion(): string {
     return cliVersion;
 }
 
+export function getLatestCliVersion(): string {
+    return getNextVersion(getCliVersion());
+}
+
 before(async () => {
     const packageJson = JSON.parse(
         await readFile(new URL("../package.json", import.meta.url), "utf8"),
@@ -135,7 +153,7 @@ before(async () => {
         ) {
             sendJsonResponse(response, 200, {
                 name: "peakurl",
-                version: "0.2.0",
+                version: getLatestCliVersion(),
             });
             return;
         }

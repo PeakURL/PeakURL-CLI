@@ -103,24 +103,53 @@ describe("PeakURL CLI Authentication", () => {
         await assert.rejects(() => readFile(configPath, "utf8"));
     });
 
-    it("shows auth guidance in a table when no credentials are configured", async () => {
+    it("shows explicit login guidance when no credentials are configured", async () => {
         const result = await runCli(["whoami"], {
             PEAKURL_BASE_URL: "",
             PEAKURL_API_KEY: "",
         });
 
         assert.equal(result.code, 1);
-        assert.match(result.stderr, /Not logged in\./);
-        assert.match(result.stderr, /\| Field\s+\| Value\s+\|/);
+        assert.match(result.stderr, /Authentication required\./);
         assert.match(
             result.stderr,
-            /\| Reason\s+\| PeakURL credentials are not configured\.\s+\|/,
+            /PeakURL could not find credentials for this command\./,
         );
-        assert.match(result.stderr, /PeakURL credentials are not configured\./);
-        assert.match(result.stderr, /\| Command\s+\| peakurl login\s+\|/);
         assert.match(
             result.stderr,
-            /\| Flags\s+\| --base-url <url> --api-key <key>\s+\|/,
+            /Use one of the first two steps below, then run the last command\./,
+        );
+        assert.match(result.stderr, /\| Step\s+\| Command\s+\| Notes\s+\|/);
+        assert.match(
+            result.stderr,
+            /\| Save credentials\s+\| peakurl login --base-url https:\/\/example\.com\/api\/v1\s+\| Regular use on this machine\s+\|/,
+        );
+        assert.match(result.stderr, /\| --api-key YOUR_API_KEY\s+\|/);
+        assert.match(
+            result.stderr,
+            /\| Set environment variables\s+\| PEAKURL_BASE_URL=https:\/\/example\.com\/api\/v1\s+\| CI, scripts, or one-off use\s+\|/,
+        );
+        assert.match(result.stderr, /\| PEAKURL_API_KEY=YOUR_API_KEY\s+\|/);
+        assert.match(
+            result.stderr,
+            /\| Then run\s+\| peakurl whoami\s+\| After completing one of the steps above\s+\|/,
+        );
+    });
+
+    it("shows the command to retry after logging in", async () => {
+        const result = await runCli(["list"], {
+            PEAKURL_BASE_URL: "",
+            PEAKURL_API_KEY: "",
+        });
+
+        assert.equal(result.code, 1);
+        assert.match(
+            result.stderr,
+            /\| Then run\s+\| peakurl list\s+\| After completing one of the steps above\s+\|/,
+        );
+        assert.match(
+            result.stderr,
+            /PEAKURL_BASE_URL=https:\/\/example\.com\/api\/v1/,
         );
     });
 });

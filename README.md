@@ -34,6 +34,7 @@ peakurl create \
 
 peakurl list
 peakurl whoami
+peakurl status
 peakurl logout
 ```
 
@@ -60,6 +61,7 @@ export PEAKURL_API_KEY=0123456789abcdef0123456789abcdef0123456789abcdef
 | `peakurl login`                | Validate and save your PeakURL credentials.                 |
 | `peakurl whoami`               | Show the current authenticated account.                     |
 | `peakurl logout`               | Remove saved local CLI credentials.                         |
+| `peakurl status`               | Show the current system status snapshot for the site.       |
 | `peakurl create <url>`         | Create a new short link.                                    |
 | `peakurl import <file>`        | Import links from a local CSV, JSON, or XML file.           |
 | `peakurl export`               | Export accessible links as CSV, JSON, or XML.               |
@@ -98,6 +100,22 @@ Log out from saved local credentials:
 
 ```bash
 peakurl logout
+```
+
+Show the current system status:
+
+```bash
+peakurl status
+```
+
+The status command calls `GET /api/v1/system/status` and prints summary, checks, plus site, server, database, storage, mail, location, and data tables when that information is available.
+
+This route typically requires admin access on the PeakURL install.
+
+If you need the raw payload:
+
+```bash
+peakurl status --json
 ```
 
 Delete a link:

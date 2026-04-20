@@ -34,6 +34,7 @@ const link = {
 };
 
 let baseUrl = "";
+let cliVersion = "";
 let server: ReturnType<typeof createServer>;
 
 function sendJson(
@@ -92,7 +93,19 @@ function resolveConfigPath(homeDir: string): string {
     }
 }
 
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 before(async () => {
+    const packageJson = JSON.parse(
+        await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    ) as {
+        version: string;
+    };
+
+    cliVersion = packageJson.version;
+
     server = createServer(async (request, response) => {
         const url = new URL(
             request.url || "/",
@@ -353,7 +366,10 @@ describe("peakurl CLI", () => {
 
         assert.equal(result.code, 0);
         assert.match(result.stderr, /Update Available/);
-        assert.match(result.stderr, /peakurl 0\.1\.0 -> 0\.2\.0/);
+        assert.match(
+            result.stderr,
+            new RegExp(`peakurl ${escapeRegExp(cliVersion)} -> 0\\.2\\.0`),
+        );
         assert.match(result.stderr, /Run: npm install -g peakurl@latest/);
     });
 
@@ -376,7 +392,7 @@ describe("peakurl CLI", () => {
         };
 
         assert.equal(parsed.success, true);
-        assert.equal(parsed.data.currentVersion, "0.1.0");
+        assert.equal(parsed.data.currentVersion, cliVersion);
         assert.equal(parsed.data.latestVersion, "0.2.0");
         assert.equal(parsed.data.isOutdated, true);
         assert.equal(parsed.data.checkOnly, true);
@@ -390,7 +406,10 @@ describe("peakurl CLI", () => {
 
         assert.equal(result.code, 0);
         assert.match(result.stdout, /Update Available/);
-        assert.match(result.stdout, /peakurl 0\.1\.0 -> 0\.2\.0/);
+        assert.match(
+            result.stdout,
+            new RegExp(`peakurl ${escapeRegExp(cliVersion)} -> 0\\.2\\.0`),
+        );
         assert.match(result.stdout, /Run: npm install -g peakurl@latest/);
     });
 });

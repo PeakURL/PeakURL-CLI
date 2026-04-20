@@ -189,7 +189,7 @@ export function compareSemver(left: string, right: string): number {
  * @returns One-line install command.
  */
 export function getUpdateInstallCommand(): string {
-    return `npm install -g ${PACKAGE_NAME}@latest`;
+    return `npm i -g ${PACKAGE_NAME}@latest`;
 }
 
 async function fetchLatestVersion(

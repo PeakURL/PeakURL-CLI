@@ -13,11 +13,16 @@ describe("PeakURL CLI Authentication", () => {
         const result = await runCli(["--help"]);
 
         assert.equal(result.code, 0);
-        assert.match(result.stdout, /PeakURL command-line interface/);
+        assert.match(
+            result.stdout,
+            /Manage your PeakURL site from the terminal\./,
+        );
         assert.match(result.stdout, /login/);
         assert.match(result.stdout, /logout/);
         assert.match(result.stdout, /status/);
         assert.match(result.stdout, /create/);
+        assert.match(result.stdout, /Documentation:/);
+        assert.match(result.stdout, /https:\/\/peakurl\.org\/docs\/cli/);
     });
 
     it("persists verified credentials to the config file", async () => {

@@ -49,7 +49,7 @@ The CLI uses PeakURL bearer API keys and validates them against `GET /api/v1/use
 For CI or automation, you can also authenticate with environment variables:
 
 ```bash
-export PEAKURL_BASE_URL=https://peakurl.org
+export PEAKURL_BASE_URL=https://peakurl.org/api/v1
 export PEAKURL_API_KEY=0123456789abcdef0123456789abcdef0123456789abcdef
 ```
 
@@ -134,6 +134,23 @@ export PEAKURL_DISABLE_UPDATE_CHECK=1
 - Human-readable output is the default
 - `--json` prints machine-readable JSON where supported
 - `--quiet` minimizes output for scripts
+
+If you run an authenticated command before logging in, the CLI explains what to do next and shows the command to retry:
+
+```text
+Authentication required.
+PeakURL could not find credentials for this command.
+Use one of the first two steps below, then run the last command.
++---------------------------+-----------------------------------------------------+-----------------------------------------+
+| Step                      | Command                                             | Notes                                   |
++---------------------------+-----------------------------------------------------+-----------------------------------------+
+| Save credentials          | peakurl login --base-url https://example.com/api/v1 | Regular use on this machine             |
+|                           | --api-key YOUR_API_KEY                              |                                         |
+| Set environment variables | PEAKURL_BASE_URL=https://example.com/api/v1         | CI, scripts, or one-off use             |
+|                           | PEAKURL_API_KEY=YOUR_API_KEY                        |                                         |
+| Then run                  | peakurl whoami                                      | After completing one of the steps above |
++---------------------------+-----------------------------------------------------+-----------------------------------------+
+```
 
 ## Links
 

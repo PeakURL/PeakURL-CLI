@@ -4,11 +4,11 @@
     "description": "Official CLI for creating, listing, and managing PeakURL short links from the terminal",
     "homepage": "https://peakurl.org",
     "bugs": {
-        "url": "https://github.com/PeakURL/PeakURL-CLI/issues"
+        "url": "https://github.com/PeakURL/CLI/issues"
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/PeakURL/PeakURL-CLI.git"
+        "url": "git+https://github.com/PeakURL/CLI.git"
     },
     "keywords": [
         "peakurl",

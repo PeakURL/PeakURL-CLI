@@ -121,13 +121,15 @@ If you need the raw payload:
 peakurl status --json
 ```
 
-Download and extract the latest PeakURL core package into the current directory:
+Download, verify, and extract the current PeakURL core package into the current directory:
 
 ```bash
 peakurl core download
 ```
 
-If the current directory already contains conflicting files, re-run with:
+The command checks the published release checksum before extracting files. If the current directory already contains release-managed files, the command stops by default.
+
+Use `--force` only when you intentionally want those files replaced:
 
 ```bash
 peakurl core download --force
